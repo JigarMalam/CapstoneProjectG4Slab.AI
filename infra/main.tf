@@ -42,7 +42,7 @@ resource "aws_security_group" "allow_ssh" {
 
 # EC2 Instance
 resource "aws_instance" "app_server" {
-  ami                    = "ami-0a94a1259c5779e00"   # Ubuntu 22.04 in us-west-2
+  ami                    = "ami-03aa99ddf5498ceb9"   
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.allow_ssh.id]
