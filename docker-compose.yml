@@ -1,0 +1,38 @@
+services:
+  payment-service:
+    build: ./backend/paymentService
+    env_file:
+      - ./backend/paymentService/.env
+    ports:
+      - "7004:5000"
+
+  project-service:
+    build: ./backend/projectService
+    env_file:
+      - ./backend/projectService/.env
+    ports:
+      - "7005:7000"
+
+  user-service:
+    build: ./backend/userService
+    env_file:
+      - ./backend/userService/.env
+    ports:
+      - "3003:7000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+    - "8080:80"   # map host:container
+    depends_on:
+    - payment-service
+    - project-service
+    - user-service
+      
+  redis:
+    image: redis:6
+    container_name: redis-server
+    ports:
+      - "6372:6379"

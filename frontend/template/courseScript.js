@@ -113,7 +113,7 @@ fetch(`http://localhost:3002/api/projects/${projectId}`)
         amount: price
     };
 
-    fetch('http://localhost:3003/api/payment/create-order', {
+    fetch('http://localhost:7003/api/payment/create-order', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -158,7 +158,7 @@ function openRazorpayCheckout(orderDetails, userDetails) {
 }
 
 function verifyPayment(paymentResponse, orderId, userDetails) {
-    fetch('http://localhost:3003/api/payment/verify-payment', {
+    fetch('http://localhost:7003/api/payment/verify-payment', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
