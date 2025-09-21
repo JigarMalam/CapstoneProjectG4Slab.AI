@@ -18,7 +18,7 @@ services:
     env_file:
       - ./backend/userService/.env
     ports:
-      - "3003:7000"
+      - "7003:7000"
 
   frontend:
     build:

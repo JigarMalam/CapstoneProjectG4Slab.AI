@@ -1,0 +1,41 @@
+---
+- name: Deploy services on slab-ai-server
+  hosts: app_servers
+  become: yes
+  vars:
+    aws_region: "{{ aws_region | default('ap-south-1') }}"
+    aws_account_id: "{{ aws_account_id | default('<AWS_ACCOUNT_ID>') }}"
+    ecr_prefix: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/slab-ai"
+  tasks:
+    - name: Login to ECR (remote)
+      shell: |
+        aws ecr get-login-password --region {{ aws_region }} | docker login --username AWS --password-stdin {{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com
+      args:
+        executable: /bin/bash
+
+    - name: Run Redis (if not present)
+      shell: docker run -d --name redis-server -p 6372:6379 redis:6 || true
+
+    - name: Deploy payment-service
+      shell: |
+        docker rm -f payment-service || true
+        docker pull {{ ecr_prefix }}/payment-service:latest
+        docker run -d --name payment-service -p 7004:7000 --env-file /home/ubuntu/payment.env {{ ecr_prefix }}/payment-service:latest
+
+    - name: Deploy project-service
+      shell: |
+        docker rm -f project-service || true
+        docker pull {{ ecr_prefix }}/project-service:latest
+        docker run -d --name project-service -p 7005:7000 --env-file /home/ubuntu/project.env {{ ecr_prefix }}/project-service:latest
+
+    - name: Deploy user-service
+      shell: |
+        docker rm -f user-service || true
+        docker pull {{ ecr_prefix }}/user-service:latest
+        docker run -d --name user-service -p 7003:7000 --env-file /home/ubuntu/user.env {{ ecr_prefix }}/user-service:latest
+
+    - name: Deploy frontend
+      shell: |
+        docker rm -f frontend || true
+        docker pull {{ ecr_prefix }}/frontend:latest
+        docker run -d --name frontend -p 8080:80 {{ ecr_prefix }}/frontend:latest
