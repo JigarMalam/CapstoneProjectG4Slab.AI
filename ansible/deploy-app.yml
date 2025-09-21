@@ -3,7 +3,7 @@
   hosts: app_servers
   become: yes
   vars:
-    aws_region: "{{ aws_region | default('ap-south-1') }}"
+    aws_region: "{{ aws_region | default('us-west-2') }}"
     aws_account_id: "{{ aws_account_id | default('<AWS_ACCOUNT_ID>') }}"
     ecr_prefix: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/slab-ai"
   tasks:
