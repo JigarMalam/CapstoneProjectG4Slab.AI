@@ -60,3 +60,17 @@
           --link user-service:user-service \
           --link payment-service:payment-service \
           {{ ecr_prefix }}/frontend:latest
+    
+    - name: Deploy Project Service
+      shell: |
+        docker run -d --name project-service -p 7002:7005 \
+          --env-file /home/ubuntu/project.env \
+          --env MONGO_URI=mongodb://mongo:27017/slabai \
+          --env REDIS_HOST=redis-server \
+          --env REDIS_PORT=6379 \
+          --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+          --env AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+          --env AWS_REGION=us-west-2 \
+          --env AWS_BUCKET_NAME=slab-ai-demo-bucket \
+          --link mongo:mongo --link redis-server:redis \
+          {{ ecr_prefix }}/project-service:latest
