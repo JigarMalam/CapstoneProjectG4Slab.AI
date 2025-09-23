@@ -1,91 +1,106 @@
 ---
-- name: Login to AWS ECR
-  shell: |
-    aws ecr get-login-password --region us-west-2 \
-      | docker login --username AWS --password-stdin 975050024946.dkr.ecr.us-west-2.amazonaws.com
-  register: ecr_login
-  ignore_errors: no
-
-- debug:
-    var: ecr_login.stdout
 - name: Deploy Slab.AI Application Stack
-  hosts: app_servers
+  hosts: slab-ai-server
   become: yes
 
-- name: Refresh ECR login
-  shell: |
-    aws ecr get-login-password --region us-west-2 \
-      | docker login --username AWS --password-stdin 975050024946.dkr.ecr.us-west-2.amazonaws.com
-
-
-  vars:
-    aws_region: "us-west-2"
-    aws_account_id: "975050024946"
-    ecr_prefix: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/jigar-slab-ai"
-
   tasks:
-    - name: Ensure old containers are removed
-      shell: |
-        docker rm -f frontend payment-service project-service user-service mongo redis-server || true
+    - name: Ensure Docker network exists
+      command: docker network create slabai-net
+      ignore_errors: yes
 
-    - name: Run MongoDB
+    - name: Login to AWS ECR
       shell: |
-        docker run -d --name mongo -p 27017:27017 \
-          -v mongo_data:/data/db \
-          mongo:6
+        aws ecr get-login-password --region us-west-2 \
+          | docker login --username AWS --password-stdin 975050024946.dkr.ecr.us-west-2.amazonaws.com
+      register: ecr_login
 
-    - name: Run Redis
-      shell: |
-        docker run -d --name redis-server -p 6379:6379 redis:6
+    - debug:
+        var: ecr_login.stdout
 
-    - name: Deploy Payment Service
-      shell: |
-        docker run -d --name payment-service -p 7001:5000 \
-          --env-file /home/ubuntu/payment.env \
-          --env MONGO_URI=mongodb://mongo:27017/slabai \
-          --env REDIS_HOST=redis-server \
-          --env REDIS_PORT=6379 \
-          --link mongo:mongo --link redis-server:redis \
-          {{ ecr_prefix }}/payment-service:latest
+    # ----------------------
+    # Infrastructure services
+    # ----------------------
+
+    - name: Start MongoDB container
+      docker_container:
+        name: mongo
+        image: mongo:6
+        state: started
+        restart_policy: always
+        networks:
+          - name: slabai-net
+        published_ports:
+          - "27017:27017"
+
+    - name: Start Redis container
+      docker_container:
+        name: redis-server
+        image: redis:6
+        state: started
+        restart_policy: always
+        networks:
+          - name: slabai-net
+        published_ports:
+          - "6379:6379"
+
+    # ----------------------
+    # Application services
+    # ----------------------
 
     - name: Deploy Project Service
-      shell: |
-        docker run -d --name project-service -p 7002:7005 \
-          --env-file /home/ubuntu/project.env \
-          --env MONGO_URI=mongodb://mongo:27017/slabai \
-          --env REDIS_HOST=redis-server \
-          --env REDIS_PORT=6379 \
-          --link mongo:mongo --link redis-server:redis \
-          {{ ecr_prefix }}/project-service:latest
+      docker_container:
+        name: project-service
+        image: 975050024946.dkr.ecr.us-west-2.amazonaws.com/jigar-slab-ai/project-service:latest
+        state: started
+        restart_policy: always
+        networks:
+          - name: slabai-net
+        published_ports:
+          - "7005:7005"
+        env:
+          PORT: "7005"
+          MONGO_URI: "mongodb://mongo:27017/slabai"
+          REDIS_URI: "redis://redis-server:6379"
+          AWS_BUCKET_NAME: "your-s3-bucket-name"
+          AWS_REGION: "us-west-2"
 
     - name: Deploy User Service
-      shell: |
-        docker run -d --name user-service -p 7003:5000 \
-          --env-file /home/ubuntu/user.env \
-          --env MONGO_URI=mongodb://mongo:27017/slabai \
-          --env REDIS_HOST=redis-server \
-          --env REDIS_PORT=6379 \
-          --link mongo:mongo --link redis-server:redis \
-          {{ ecr_prefix }}/user-service:latest
+      docker_container:
+        name: user-service
+        image: 975050024946.dkr.ecr.us-west-2.amazonaws.com/jigar-slab-ai/user-service:latest
+        state: started
+        restart_policy: always
+        networks:
+          - name: slabai-net
+        published_ports:
+          - "7003:5000"
+        env:
+          PORT: "5000"
+          MONGO_URI: "mongodb://mongo:27017/slabai"
+          REDIS_URI: "redis://redis-server:6379"
+
+    - name: Deploy Payment Service
+      docker_container:
+        name: payment-service
+        image: 975050024946.dkr.ecr.us-west-2.amazonaws.com/jigar-slab-ai/payment-service:latest
+        state: started
+        restart_policy: always
+        networks:
+          - name: slabai-net
+        published_ports:
+          - "7004:5000"
+        env:
+          PORT: "5000"
+          MONGO_URI: "mongodb://mongo:27017/slabai"
+          REDIS_URI: "redis://redis-server:6379"
 
     - name: Deploy Frontend
-      shell: |
-        docker run -d --name frontend -p 8080:80 \
-          --link project-service:project-service \
-          --link user-service:user-service \
-          --link payment-service:payment-service \
-          {{ ecr_prefix }}/frontend:latest
-    
-    - name: Deploy Project Service
-      shell: |
-        docker run -d --name project-service -p 7002:7005 \
-          --env-file /home/ubuntu/project.env \
-          --env MONGO_URI=mongodb://mongo:27017/slabai \
-          --env REDIS_HOST=redis-server \
-          --env REDIS_PORT=6379 \
-          --env AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
-          --env AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-          --env AWS_REGION=us-west-2 \
-          --env AWS_BUCKET_NAME=slab-ai-demo-bucket \
-          --link mongo:mongo --link redis-server:redis \
-          {{ ecr_prefix }}/project-service:latest
+      docker_container:
+        name: frontend
+        image: 975050024946.dkr.ecr.us-west-2.amazonaws.com/jigar-slab-ai/frontend:latest
+        state: started
+        restart_policy: always
+        networks:
+          - name: slabai-net
+        published_ports:
+          - "8080:80"
