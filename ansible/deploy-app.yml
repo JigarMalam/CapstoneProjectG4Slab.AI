@@ -1,6 +1,6 @@
 ---
 - name: Deploy Slab.AI Application Stack
-  hosts: slab-ai-server
+  hosts: jigar-G4-slab-ai-server
   become: yes
 
   tasks:
@@ -61,7 +61,7 @@
           PORT: "7005"
           MONGO_URI: "mongodb://mongo:27017/slabai"
           REDIS_URI: "redis://redis-server:6379"
-          AWS_BUCKET_NAME: "your-s3-bucket-name"
+          AWS_BUCKET_NAME: "slab-ai-demo-bucket"
           AWS_REGION: "us-west-2"
 
     - name: Deploy User Service
