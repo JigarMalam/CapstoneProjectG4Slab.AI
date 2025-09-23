@@ -3,6 +3,12 @@
   hosts: app_servers
   become: yes
 
+- name: Refresh ECR login
+  shell: |
+    aws ecr get-login-password --region us-west-2 \
+      | docker login --username AWS --password-stdin 975050024946.dkr.ecr.us-west-2.amazonaws.com
+
+
   vars:
     aws_region: "us-west-2"
     aws_account_id: "975050024946"
