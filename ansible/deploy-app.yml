@@ -1,4 +1,13 @@
 ---
+- name: Login to AWS ECR
+  shell: |
+    aws ecr get-login-password --region us-west-2 \
+      | docker login --username AWS --password-stdin 975050024946.dkr.ecr.us-west-2.amazonaws.com
+  register: ecr_login
+  ignore_errors: no
+
+- debug:
+    var: ecr_login.stdout
 - name: Deploy Slab.AI Application Stack
   hosts: app_servers
   become: yes
