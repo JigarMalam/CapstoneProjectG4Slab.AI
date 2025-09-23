@@ -1,41 +1,62 @@
 ---
-- name: Deploy services on slab-ai-server
+- name: Deploy Slab.AI Application Stack
   hosts: app_servers
   become: yes
+
   vars:
-    aws_region: "{{ aws_region | default('us-west-2') }}"
-    aws_account_id: "{{ aws_account_id | default('<AWS_ACCOUNT_ID>') }}"
+    aws_region: "us-west-2"
+    aws_account_id: "975050024946"
     ecr_prefix: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/jigar-slab-ai"
+
   tasks:
-    - name: Login to ECR (remote)
+    - name: Ensure old containers are removed
       shell: |
-        aws ecr get-login-password --region {{ aws_region }} | docker login --username AWS --password-stdin {{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com
-      args:
-        executable: /bin/bash
+        docker rm -f frontend payment-service project-service user-service mongo redis-server || true
 
-    - name: Run Redis (if not present)
-      shell: docker run -d --name redis-server -p 6372:6379 redis:6 || true
-
-    - name: Deploy payment-service
+    - name: Run MongoDB
       shell: |
-        docker rm -f payment-service || true
-        docker pull {{ ecr_prefix }}/payment-service:latest
-        docker run -d --name payment-service -p 7004:7000 --env-file /home/ubuntu/payment.env {{ ecr_prefix }}/payment-service:latest
+        docker run -d --name mongo -p 27017:27017 \
+          -v mongo_data:/data/db \
+          mongo:6
 
-    - name: Deploy project-service
+    - name: Run Redis
       shell: |
-        docker rm -f project-service || true
-        docker pull {{ ecr_prefix }}/project-service:latest
-        docker run -d --name project-service -p 7005:7000 --env-file /home/ubuntu/project.env {{ ecr_prefix }}/project-service:latest
+        docker run -d --name redis-server -p 6379:6379 redis:6
 
-    - name: Deploy user-service
+    - name: Deploy Payment Service
       shell: |
-        docker rm -f user-service || true
-        docker pull {{ ecr_prefix }}/user-service:latest
-        docker run -d --name user-service -p 7003:7000 --env-file /home/ubuntu/user.env {{ ecr_prefix }}/user-service:latest
+        docker run -d --name payment-service -p 7001:5000 \
+          --env-file /home/ubuntu/payment.env \
+          --env MONGO_URI=mongodb://mongo:27017/slabai \
+          --env REDIS_HOST=redis-server \
+          --env REDIS_PORT=6379 \
+          --link mongo:mongo --link redis-server:redis \
+          {{ ecr_prefix }}/payment-service:latest
 
-    - name: Deploy frontend
+    - name: Deploy Project Service
       shell: |
-        docker rm -f frontend || true
-        docker pull {{ ecr_prefix }}/frontend:latest
-        docker run -d --name frontend -p 8080:80 {{ ecr_prefix }}/frontend:latest
+        docker run -d --name project-service -p 7002:7005 \
+          --env-file /home/ubuntu/project.env \
+          --env MONGO_URI=mongodb://mongo:27017/slabai \
+          --env REDIS_HOST=redis-server \
+          --env REDIS_PORT=6379 \
+          --link mongo:mongo --link redis-server:redis \
+          {{ ecr_prefix }}/project-service:latest
+
+    - name: Deploy User Service
+      shell: |
+        docker run -d --name user-service -p 7003:5000 \
+          --env-file /home/ubuntu/user.env \
+          --env MONGO_URI=mongodb://mongo:27017/slabai \
+          --env REDIS_HOST=redis-server \
+          --env REDIS_PORT=6379 \
+          --link mongo:mongo --link redis-server:redis \
+          {{ ecr_prefix }}/user-service:latest
+
+    - name: Deploy Frontend
+      shell: |
+        docker run -d --name frontend -p 8080:80 \
+          --link project-service:project-service \
+          --link user-service:user-service \
+          --link payment-service:payment-service \
+          {{ ecr_prefix }}/frontend:latest
