@@ -88,7 +88,16 @@ Automating build, provisioning, deployment, and monitoring for scalable cloud ap
 
 ---
 
-## Next Step (Planned)
-- **Step 6: Configuration Management with Ansible via Jenkins**
-  - Install Docker, kubectl, and dependencies on EC2 automatically.
-  - Prepare servers for Kubernetes/EKS integration.
+## ScreenShots
+
+| Description | Screenshot |
+|---|---|
+| Jenkins Home Page | ![](screenshots/02_jenkins_home.png) |
+| Jenkins Console Output | ![](screenshots/03_jenkins_console_output.png) |
+| Terraform Apply Output | ![](screenshots/04_terraform_apply.png) |
+| EC2 Instances in AWS Console | ![](screenshots/05_ec2_instances_aws_console.png) |
+| Ansible Playbook Run | ![](screenshots/06_ansible_playbook_run.png) |
+| Docker Containers Running on EC2 | ![](screenshots/07_docker_ps_ec2.png) |
+| Application Running in Browser | ![](screenshots/08_app_running_browser.png) |
+| Monitoring Dashboard | ![](screenshots/09_Monitoring_Simple.png) |
+| Pipeline Architecture Diagram | ![](screenshots/12_pipeline_architecture.png) |
