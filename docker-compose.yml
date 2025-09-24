@@ -2,7 +2,7 @@ services:
   payment-service:
     build: ./backend/paymentService
     env_file:
-      - ./backend/paymentService/.env
+      - /home/ubuntu/project.env
     ports:
       - "7004:5000"
 
