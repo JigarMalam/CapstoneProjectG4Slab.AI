@@ -1,0 +1,30 @@
+---
+- name: Simple Server Monitoring
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+
+    - name: Check CPU usage
+      shell: "top -bn1 | grep 'Cpu(s)'"
+      register: cpu_usage
+
+    - name: Show CPU usage
+      debug:
+        msg: "{{ cpu_usage.stdout }}"
+
+    - name: Check memory usage
+      shell: "free -h"
+      register: mem_usage
+
+    - name: Show memory usage
+      debug:
+        msg: "{{ mem_usage.stdout }}"
+
+    - name: Check disk usage
+      shell: "df -h /"
+      register: disk_usage
+
+    - name: Show disk usage
+      debug:
+        msg: "{{ disk_usage.stdout }}"
